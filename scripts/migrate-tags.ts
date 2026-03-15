@@ -103,7 +103,7 @@ async function main() {
         // Actually for many-to-many, connect needs ID.
 
         // Let's check if already connected to avoid unnecessary writes
-        const existingIds = new Set(item.tags.map(t => t.id));
+        const existingIds = new Set(item.tags.map((t: { id: string }) => t.id));
         const newConnections = tagConnections.filter(t => !existingIds.has(t.id));
 
         if (newConnections.length > 0) {
