@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/ui/back-button";
@@ -20,6 +20,36 @@ function PrintPreviewContent() {
     const [showTags, setShowTags] = useState(false);
     const [imageScale, setImageScale] = useState(70);
     const [showQuestionText, setShowQuestionText] = useState(false);
+    const [shuffleEnabled, setShuffleEnabled] = useState(false);
+
+    // Fisher-Yates 洗牌算法：浅拷贝后打乱，原数据不动
+    const shuffleArray = <T,>(array: T[]): T[] => {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    };
+
+    // 提取题目原序号（如 "16." → "16", "第17题" 等）
+    const extractQuestionNumber = (item: ErrorItem): string | null => {
+        const text = item.questionText || "";
+        // 匹配开头数字+点号 或 "第N题" 格式
+        const match = text.match(/^(\d+)\.\s/);
+        if (match) return match[1];
+        const cnMatch = text.match(/第(\d+)题/);
+        if (cnMatch) return cnMatch[1];
+        return null;
+    };
+
+    // 根据 shuffleEnabled 决定显示的列表
+    const displayItems = useMemo(() => {
+        if (shuffleEnabled) {
+            return shuffleArray(items);
+        }
+        return items;
+    }, [items, shuffleEnabled]);
 
     useEffect(() => {
         fetchItems();
@@ -86,6 +116,15 @@ function PrintPreviewContent() {
                             <label className="flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:text-primary transition-colors">
                                 <input
                                     type="checkbox"
+                                    checked={shuffleEnabled}
+                                    onChange={(e) => setShuffleEnabled(e.target.checked)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary w-3.5 h-3.5 sm:w-4 sm:h-4"
+                                />
+                                {t.printPreview?.shuffle || '随机排列'}
+                            </label>
+                            <label className="flex items-center gap-1.5 text-xs sm:text-sm cursor-pointer whitespace-nowrap hover:text-primary transition-colors">
+                                <input
+                                    type="checkbox"
                                     checked={showQuestionText}
                                     onChange={(e) => setShowQuestionText(e.target.checked)}
                                     className="rounded border-gray-300 text-primary focus:ring-primary w-3.5 h-3.5 sm:w-4 sm:h-4"
@@ -126,7 +165,11 @@ function PrintPreviewContent() {
 
             {/* Print Content */}
             <div className="max-w-4xl mx-auto p-8 print:p-0">
-                {items.map((item, index) => {
+                {displayItems.map((item, index) => {
+                    // 提取原题号
+                    const originalNum = extractQuestionNumber(item);
+                    // 题目序号：优先使用原题号（如 "16"），否则使用索引+1
+                    const displayNum = originalNum || String(index + 1);
                     // 优先使用 tags 关联，回退到 knowledgePoints
                     let tags: string[] = [];
                     if (item.tags && item.tags.length > 0) {
@@ -147,7 +190,7 @@ function PrintPreviewContent() {
                             {/* Question Header */}
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold">{t.printPreview?.questionNumber?.replace('{num}', String(index + 1)) || `Question ${index + 1}`}</span>
+                                    <span className="text-lg font-bold">{t.printPreview?.questionNumber?.replace('{num}', displayNum) || `Question ${displayNum}`}</span>
                                     {item.subject && (
                                         <span className="text-sm text-muted-foreground">
                                             {item.subject.name}
@@ -222,7 +265,7 @@ function PrintPreviewContent() {
                     );
                 })}
 
-                {items.length === 0 && (
+                {displayItems.length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
                         {t.printPreview?.noItems || 'No matching error items'}
                     </div>
