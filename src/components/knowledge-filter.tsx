@@ -205,22 +205,28 @@ export function KnowledgeFilter({
         });
     };
 
-    // 从标签树中找到当前年级节点
-    const currentGradeNode = tagTree.find(node => node.name === gradeSemester);
-    const chapters = currentGradeNode?.children || [];
-
-    // 从标签树中找到当前章节节点
-    const currentChapterNode = chapters.find(node => node.name === chapter);
-
     // 递归获取所有叶子标签
     const getLeafTags = (node: TagTreeNode): string[] => {
         if (node.children.length === 0) return [node.name];
         return node.children.flatMap(child => getLeafTags(child));
     };
-    // 去重标签，避免 React key 冲突
-    const tags = currentChapterNode
-        ? [...new Set(getLeafTags(currentChapterNode))]
+
+    // 选择"全部年级"时，展开所有年级的章节
+    const allChapters = tagTree.flatMap(node => node.children || []);
+    const currentGradeNode = tagTree.find(node => node.name === gradeSemester);
+    const chapters = gradeSemester === "all" || gradeSemester === ""
+        ? allChapters
+        : (currentGradeNode?.children || []);
+
+    // 选择"全部章节"时，展开所有章节的知识点
+    const currentChapterNode = chapters.find(node => node.name === chapter);
+    const allTagsFromAllChapters = chapters.flatMap(ch => getLeafTags(ch));
+    const tagsFromCurrent = currentChapterNode
+        ? getLeafTags(currentChapterNode)
         : [];
+    const tags = (chapter === "all" || chapter === "")
+        ? [...new Set(allTagsFromAllChapters)]
+        : [...new Set(tagsFromCurrent)];
 
     // 过滤可用年级 (只显示数据库中存在的)
     // 对于非数学科目，如果不按照年级结构存储，这里可能会被清空
@@ -247,7 +253,7 @@ export function KnowledgeFilter({
                 </SelectContent>
             </Select>
 
-            <Select value={chapter} onValueChange={handleChapterChange} disabled={!gradeSemester || gradeSemester === "all"}>
+            <Select value={chapter} onValueChange={handleChapterChange} disabled={chapters.length === 0}>
                 <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="章节" />
                 </SelectTrigger>
@@ -261,7 +267,7 @@ export function KnowledgeFilter({
                 </SelectContent>
             </Select>
 
-            <Select value={tag} onValueChange={handleTagChange} disabled={!chapter || chapter === "all"}>
+            <Select value={tag} onValueChange={handleTagChange} disabled={tags.length === 0}>
                 <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="知识点" />
                 </SelectTrigger>
