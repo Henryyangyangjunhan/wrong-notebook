@@ -32,17 +32,6 @@ function PrintPreviewContent() {
         return shuffled;
     };
 
-    // 提取题目原序号（如 "16." → "16", "第17题" 等）
-    const extractQuestionNumber = (item: ErrorItem): string | null => {
-        const text = item.questionText || "";
-        // 匹配开头数字+点号 或 "第N题" 格式
-        const match = text.match(/^(\d+)\.\s/);
-        if (match) return match[1];
-        const cnMatch = text.match(/第(\d+)题/);
-        if (cnMatch) return cnMatch[1];
-        return null;
-    };
-
     // 根据 shuffleEnabled 决定显示的列表
     const displayItems = useMemo(() => {
         if (shuffleEnabled) {
@@ -165,11 +154,10 @@ function PrintPreviewContent() {
 
             {/* Print Content */}
             <div className="max-w-4xl mx-auto p-8 print:p-0">
-                {displayItems.map((item, index) => {
-                    // 提取原题号
-                    const originalNum = extractQuestionNumber(item);
-                    // 题目序号：优先使用原题号（如 "16"），否则使用索引+1
-                    const displayNum = originalNum || String(index + 1);
+                {displayItems.map((item) => {
+                    // 题号是 questionText 自身内容的一部分，不提取、不生成
+                    // 取 questionText 第一行作为题目标识（如 "16. I liked..."）
+                    const firstLine = (item.questionText || "").split("\n")[0].trim();
                     // 优先使用 tags 关联，回退到 knowledgePoints
                     let tags: string[] = [];
                     if (item.tags && item.tags.length > 0) {
@@ -190,7 +178,9 @@ function PrintPreviewContent() {
                             {/* Question Header */}
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <span className="text-lg font-bold">{t.printPreview?.questionNumber?.replace('{num}', displayNum) || `Question ${displayNum}`}</span>
+                                    <span className="text-base font-semibold text-foreground/80 truncate max-w-md">
+                                        {firstLine || `Item #${item.id.slice(-6)}`}
+                                    </span>
                                     {item.subject && (
                                         <span className="text-sm text-muted-foreground">
                                             {item.subject.name}
