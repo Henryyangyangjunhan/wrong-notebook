@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { OpenAIProvider } from '@/lib/ai/openai-provider';
 import { GeminiProvider } from '@/lib/ai/gemini-provider';
 import { AzureOpenAIProvider } from '@/lib/ai/azure-provider';
+import { ModelScopeProvider } from '@/lib/ai/modelscope-provider';
 import { createLogger } from '@/lib/logger';
 
 const logger = createLogger('api:ai:test');
@@ -70,7 +71,7 @@ function parseErrorCode(error: unknown): string {
 }
 
 export interface AITestRequest {
-    provider: 'openai' | 'gemini' | 'azure';
+    provider: 'openai' | 'gemini' | 'azure' | 'modelscope';
     apiKey: string;
     baseUrl?: string;
     model?: string;
@@ -157,6 +158,14 @@ export async function POST(request: NextRequest) {
                     visionSupport = true;
                     modelInfo = model || deploymentName;
                 }
+            } else if (provider === 'modelscope') {
+                const modelscope = new ModelScopeProvider({ apiKey, baseUrl, model });
+                const result = await modelscope.analyzeImage(TEST_IMAGE_BASE64, TEST_IMAGE_MIME, language);
+                if (result.questionText || result.analysis) {
+                    textSupport = true;
+                    visionSupport = true;
+                    modelInfo = model || 'Qwen/Qwen3-VL-8B-Instruct';
+                }
             }
         } catch (error) {
             const errCode = parseErrorCode(error);
@@ -219,6 +228,18 @@ export async function POST(request: NextRequest) {
                     if (result.questionText) {
                         textSupport = true;
                         modelInfo = model || deploymentName;
+                    }
+                } else if (provider === 'modelscope') {
+                    const modelscope = new ModelScopeProvider({ apiKey, baseUrl, model });
+                    const result = await modelscope.generateSimilarQuestion(
+                        '1+1=?',
+                        ['基础算术'],
+                        language,
+                        'easy'
+                    );
+                    if (result.questionText) {
+                        textSupport = true;
+                        modelInfo = model || 'Qwen/Qwen3-VL-8B-Instruct';
                     }
                 }
             } catch (error) {

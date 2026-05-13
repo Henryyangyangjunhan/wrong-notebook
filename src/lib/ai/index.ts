@@ -2,6 +2,7 @@ import { AIService } from "./types";
 import { GeminiProvider } from "./gemini-provider";
 import { OpenAIProvider } from "./openai-provider";
 import { AzureOpenAIProvider } from "./azure-provider";
+import { ModelScopeProvider } from "./modelscope-provider";
 
 export * from "./types";
 
@@ -22,6 +23,9 @@ export function getAIService(): AIService {
     } else if (provider === "azure") {
         logger.info({ deployment: config.azure?.deploymentName }, 'Using Azure OpenAI Provider');
         return new AzureOpenAIProvider(config.azure);
+    } else if (provider === "modelscope") {
+        logger.info({ model: config.modelscope?.model }, 'Using ModelScope Provider');
+        return new ModelScopeProvider(config.modelscope);
     } else {
         logger.info('Using Gemini Provider');
         return new GeminiProvider(config.gemini);
